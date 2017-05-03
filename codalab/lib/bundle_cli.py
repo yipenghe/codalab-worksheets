@@ -20,6 +20,7 @@ import copy
 import datetime
 import inspect
 import itertools
+import json
 import os
 import shlex
 import shutil
@@ -29,10 +30,12 @@ import time
 import textwrap
 from contextlib import closing
 from StringIO import StringIO
+from collections import defaultdict
 
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
 
+from jsondiff import diff
 from codalab.bundles import (
     get_bundle_subclass,
     UPLOADED_TYPES,
@@ -170,6 +173,8 @@ OTHER_COMMANDS = (
     'alias',
     'config',
     'logout',
+    'init', # TODO
+    'push',
 )
 
 
@@ -2862,3 +2867,158 @@ class BundleCLI(object):
     def _fail_if_not_local(self, args):
         if 'localhost' not in self.manager.current_client().address:
             raise UsageError('Sanity check! Point your CLI at an instance on localhost before executing admin commands: %s' % args.command)
+
+##################################################
+
+    def tree(self): return defaultdict(self.tree)
+    def tree_add(self, tree, path, value): 
+        for node in path[0:-1]:
+            tree = tree[node]
+        tree[path[-1]] = value
+    def path_to_array(self, path):
+        directories = []
+        while True:
+            path, directory = os.path.split(path)
+
+            if directory != "":
+                directories.append(directory)
+            else:
+                if path != "":
+                    directories.append(path)
+                break
+        directories.reverse()
+        # directories.pop(0) # TODO hack removes './' from directories
+        return directories
+
+    def remove_prefix(self, path):
+        path_as_array = self.path_to_array(path)
+        path_as_array.pop(0)
+        return os.path.join(*path_as_array)
+
+    def add_to_index(self, index, path, type_='FILE',):
+        """
+        |index| Dictionary 
+        |path_as_array| String path to the file or directory
+        |type_| String Either 'FILE' or 'DIRECTORY'
+        """
+        stats = os.lstat(path)
+        path_as_array = self.path_to_array(path)
+        info = {
+            '.': {
+                'type': type_,
+                'last_modification_time': stats.st_mtime,
+                'size': stats.st_size,
+            }
+        }
+        self.tree_add(index, path_as_array, info)
+
+    def has_path_changed(self, index, path, type_='FILE'):
+        stats = os.lstat(path)
+        path_as_array = self.path_to_array(path)
+        info = self.tree_get(index, path_as_array)
+        return info['.']['last_modification_time'] == stats.st_mtime and 
+            info['.']['size'] == stats.st_size
+
+    def add_to_change_index(self, change_index, path, type_='FILE'):
+        path_as_array = self.path_to_array(path)
+        self.tree_add(change_index, path_as_array, True)
+
+    @Commands.command(
+            'init',
+        help="Initializes a CodaLab projects",
+        arguments=(
+        ),
+    )
+    def do_init(self, args):
+        CACHE_DIR = '.codalabproject'
+        INDEX_FILE = 'index.json'
+        DEBUG = True
+        # convert to a class?
+
+        index = self.tree()
+
+        # Crawl through all files in the project directory and record the time stamps, file size, and SHA1
+        for root, directories, files in os.walk('.'):
+            if root != '.':
+                self.add_to_index(index, self.remove_prefix(root), type_='DIRECTORY')
+            for file_ in files:
+                self.add_to_index(index, self.remove_prefix(os.path.join(root, file_)))
+
+        if DEBUG:
+            print json.dumps(index)
+        else:
+            os.mkdir('.codalab')
+            with open('.codalab/index.json', 'w') as file_handle:
+                file_handle.write(json.dumps(index))
+        # Create a bare-metal .clproject.json file
+        CL_PROJECT = {
+            'exclude': ["*.pyc"],
+            'dependencies': [],
+        }
+        if DEBUG:
+            print ''
+            print CL_PROJECT
+        else:
+            pass
+
+
+    @Commands.command(
+        'push',
+        help='Uploads all changed bundles',
+        arguments=(
+            Commands.Argument('-f', '--force', help='Perform all garbage collection and database updates instead of just printing what would happen', action='store_true'),
+            Commands.Argument('-d', '--data-hash', help='Compute the digest for every bundle and compare against data_hash for consistency', action='store_true'),
+            Commands.Argument('-r', '--repair', help='When used with --force and --data-hash, repairs incorrect data_hash in existing bundles', action='store_true'),
+        ),
+    )
+    def do_push(self, args):
+        # load cached project state
+        with open('.codalab/index.json', 'w') as index_file: # TODO error handling
+            cached_index = json.loads(index_file)
+
+        # create index for current project state
+        current_index = self.tree()
+        # Crawl through all files in the project directory and record the time stamps, file size, and SHA1
+        for root, directories, files in os.walk('.'):
+            if root != '.':
+                self.add_to_index(current_index, self.remove_prefix(root), type_='DIRECTORY')
+            for file_ in files:
+                self.add_to_index(current_index, self.remove_prefix(os.path.join(root, file_)))
+
+        if DEBUG:
+            print json.dumps(current_index)
+        else:
+            os.mkdir('.codalab')
+            with open('.codalab/index.json', 'w') as file_handle:
+                file_handle.write(json.dumps(current_index))
+
+        # compare current index with cached index
+        # Go through current index first using breath first search
+        change_index = self.tree()
+        def add_node_to_change_index(change_index, node):
+            pass
+        def index_get(index, keys):
+            """
+            |index| tree
+            |keys| array
+            Returns value at the node, None if at any point a key doesn't exist in |index|
+            """
+            pass
+        queue = [[key] for key in current_index.keys()] # intialize queue
+        while True:
+            current_keys = queue.pop(0)
+            current_node_from_current_index = index_get(current_index, current_keys)
+            current_node_from_cached_index = index_get(cached_index, current_keys)
+            # Compare the node in both indices. The node in current_index must exist, since we're using its keys,
+            # whereas the node in cached_index may not exist. If the node values are different, then we add the
+            # keys into the change index.
+            if current_node_from_cached_index != current_node_from_cached_index:
+                # add node into change index
+                pass
+            queue.extend([[current_keys, key] for key in next_index.keys()])
+            for key, value in current_index.iteritems():
+                pass
+        # Now go through cached index
+
+        # using diff, find bundles that need to be reuploaded
+        # Upload those bundles
