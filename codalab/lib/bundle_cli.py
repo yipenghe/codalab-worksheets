@@ -35,7 +35,6 @@ from collections import defaultdict
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
 
-from jsondiff import diff
 from codalab.bundles import (
     get_bundle_subclass,
     UPLOADED_TYPES,
@@ -175,6 +174,7 @@ OTHER_COMMANDS = (
     'logout',
     'init', # TODO
     'push',
+#    'padd',
 )
 
 
@@ -1220,11 +1220,18 @@ class BundleCLI(object):
             Commands.Argument('command', metavar='[---] command', help='Arbitrary Linux command to execute.', completer=NullCompleter),
             Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
             Commands.Argument('--local', action='store_true', help='Simulate a run bundle locally. This means any dependencies provided are local files/directories mounted to a temporary container (read-only).'),
+            Commands.Argument('-p', '--profile', help='Runs command with a given profile. Uses default if no profile specified'),
         ) + Commands.metadata_arguments([RunBundle]) + EDIT_ARGUMENTS + WAIT_ARGUMENTS,
     )
     def do_run_command(self, args):
+        import pdb; pdb.set_trace()
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         args.target_spec, args.command = cli_util.desugar_command(args.target_spec, args.command)
+        if args.profile:
+            with open('.clproject', 'r') as cl_project_file:
+                cl_project = json.load(cl_project_file)
+                args.target_spec = args.target_spec + [':{}'.format(x) for x in cl_project['profiles'][args.profile]['dependencies']]
+                args.target_spec = list(set(args.target_spec))
         metadata = self.get_missing_metadata(RunBundle, args)
 
         if args.local:
@@ -2875,6 +2882,19 @@ class BundleCLI(object):
         for node in path[0:-1]:
             tree = tree[node]
         tree[path[-1]] = value
+    def tree_get(self, tree, path):
+        """
+        |tree| dictionary
+        |path| array of keys
+        Returns the value at the key corresponding to path; if at any point
+            the key in |path| isn't a valid key, None is returned.
+        """
+        for node in path:
+            if tree.get(node):
+                tree = tree[node]
+            else:
+                return None
+        return tree
     def path_to_array(self, path):
         directories = []
         while True:
@@ -2916,8 +2936,8 @@ class BundleCLI(object):
         stats = os.lstat(path)
         path_as_array = self.path_to_array(path)
         info = self.tree_get(index, path_as_array)
-        return info['.']['last_modification_time'] == stats.st_mtime and 
-            info['.']['size'] == stats.st_size
+        return (info['.']['last_modification_time'] == stats.st_mtime and \
+            info['.']['size'] == stats.st_size)
 
     def add_to_change_index(self, change_index, path, type_='FILE'):
         path_as_array = self.path_to_array(path)
@@ -2929,16 +2949,18 @@ class BundleCLI(object):
         arguments=(
         ),
     )
-    def do_init(self, args):
+    def do_init_command(self, args):
         CACHE_DIR = '.codalabproject'
         INDEX_FILE = 'index.json'
-        DEBUG = True
+        CL_PROJECT_FILE = '.clproject'
+        DEBUG = False
         # convert to a class?
 
         index = self.tree()
 
         # Crawl through all files in the project directory and record the time stamps, file size, and SHA1
         for root, directories, files in os.walk('.'):
+#            directories[:] = [d for d in directories if d not in ['.codalab']]
             if root != '.':
                 self.add_to_index(index, self.remove_prefix(root), type_='DIRECTORY')
             for file_ in files:
@@ -2952,73 +2974,134 @@ class BundleCLI(object):
                 file_handle.write(json.dumps(index))
         # Create a bare-metal .clproject.json file
         CL_PROJECT = {
-            'exclude': ["*.pyc"],
-            'dependencies': [],
+            'exclude': ["FILL ME IN"],
+            'bundles': ['FILL ME IN',],
+            'profiles': {
+                'default': {
+                    'dependencies': ['FILL ME IN'],
+                }
+            }
         }
         if DEBUG:
             print ''
             print CL_PROJECT
         else:
-            pass
+            should_create_default_clproject = False
+            print "Create default .clproject file? (Y/n):",
+            while True:
+                user_input = raw_input()
+                if user_input == '' or str.lower(user_input[0]) == 'y': 
+                    should_create_default_clproject = True
+                    break
+                elif str.lower(user_input[0]) == 'n':
+                    should_create_default_clproject = False
+                    break
+                else:
+                    print 'Enter Y/y to create default file or N/n to not create file',
+            if should_create_default_clproject:
+                skip_creating_cl_project = False
+                if os.path.exists('.clproject'):
+                    print ".clproject file already exists. Overwrite? (y/N)",
+                    while True:
+                        user_input = raw_input()
+                        if user_input == '' or str.lower(user_input[0]) == 'n':
+                            skip_creating_cl_project = True
+                            break
+                        elif str.lower(user_input[0]) == 'y':
+                            skip_creating_cl_project = False
+                            break
+                        else:
+                            print "Enter Y/y to overwrite file or N/n to cancel creating default .clproject",
+                with open('.clproject', 'w') as cl_project:
+                    cl_project.write(json.dumps(CL_PROJECT, indent=4, sort_keys=True))
+                print 'Default .clproject created, edit to fit your project\'s needs'
 
 
     @Commands.command(
         'push',
         help='Uploads all changed bundles',
         arguments=(
-            Commands.Argument('-f', '--force', help='Perform all garbage collection and database updates instead of just printing what would happen', action='store_true'),
-            Commands.Argument('-d', '--data-hash', help='Compute the digest for every bundle and compare against data_hash for consistency', action='store_true'),
-            Commands.Argument('-r', '--repair', help='When used with --force and --data-hash, repairs incorrect data_hash in existing bundles', action='store_true'),
+#            Commands.Argument('-f', '--force', help='Perform all garbage collection and database updates instead of just printing what would happen', action='store_true'),
+#            Commands.Argument('-d', '--data-hash', help='Compute the digest for every bundle and compare against data_hash for consistency', action='store_true'),
+#            Commands.Argument('-r', '--repair', help='When used with --force and --data-hash, repairs incorrect data_hash in existing bundles', action='store_true'),
         ),
     )
-    def do_push(self, args):
+    def do_push_command(self, args):
+        DEBUG = False
+        CL_PROJECT_FILE = '.clproject'
         # load cached project state
-        with open('.codalab/index.json', 'w') as index_file: # TODO error handling
-            cached_index = json.loads(index_file)
+        if not DEBUG:
+            with open('.codalab/index.json') as index_file: # TODO error handling
+                cached_index = json.load(index_file)
+                print json.dumps(cached_index, indent=4)
+            with open('.clproject') as cl_project_file:
+                cl_project = json.load(cl_project_file)
+                print json.dumps(cl_project, indent=4)
 
         # create index for current project state
         current_index = self.tree()
         # Crawl through all files in the project directory and record the time stamps, file size, and SHA1
         for root, directories, files in os.walk('.'):
+#            directories[:] = [d for d in directories if d not in ['.codalab']]
             if root != '.':
+                print root
                 self.add_to_index(current_index, self.remove_prefix(root), type_='DIRECTORY')
             for file_ in files:
                 self.add_to_index(current_index, self.remove_prefix(os.path.join(root, file_)))
+        print json.dumps(current_index)
 
-        if DEBUG:
-            print json.dumps(current_index)
-        else:
-            os.mkdir('.codalab')
-            with open('.codalab/index.json', 'w') as file_handle:
-                file_handle.write(json.dumps(current_index))
-
-        # compare current index with cached index
-        # Go through current index first using breath first search
+        # compare current index with cached index to create |change_index|
+        # First go through current index
         change_index = self.tree()
-        def add_node_to_change_index(change_index, node):
-            pass
-        def index_get(index, keys):
-            """
-            |index| tree
-            |keys| array
-            Returns value at the node, None if at any point a key doesn't exist in |index|
-            """
-            pass
-        queue = [[key] for key in current_index.keys()] # intialize queue
-        while True:
-            current_keys = queue.pop(0)
-            current_node_from_current_index = index_get(current_index, current_keys)
-            current_node_from_cached_index = index_get(cached_index, current_keys)
-            # Compare the node in both indices. The node in current_index must exist, since we're using its keys,
-            # whereas the node in cached_index may not exist. If the node values are different, then we add the
-            # keys into the change index.
-            if current_node_from_cached_index != current_node_from_cached_index:
-                # add node into change index
-                pass
-            queue.extend([[current_keys, key] for key in next_index.keys()])
-            for key, value in current_index.iteritems():
-                pass
+        queue = set([(x,) for x in current_index])
+        queue.update([(x,) for x in cached_index])
         # Now go through cached index
+        def compare_metadata(a, b):
+            if not a and not b: print 'we have a problem...'
+            if not a or not b: return True
+            return (a['.']['last_modification_time'] != b['.']['last_modification_time'] and
+                a['.']['size'] != b['.']['size'])
+
+        # TODO need to add keys from cached_index
+        while len(queue) > 0:
+            current_path = queue.pop()
+            current_value = self.tree_get(current_index, current_path)
+            cached_value = self.tree_get(cached_index, current_path)
+            if compare_metadata(current_value, cached_value):
+                self.tree_add(change_index, current_path, {'.': True})
+            for key in (current_value or []):
+                if key == '.': continue
+                new_path = current_path + (key,)
+                queue.add(new_path)
+            for key in (cached_value or []):
+                if key == '.': continue
+                new_path = current_path + (key,)
+                queue.add(new_path)
+
+        print json.dumps(change_index, indent=4)
 
         # using diff, find bundles that need to be reuploaded
         # Upload those bundles
+        for bundle_path in cl_project['bundles']:
+            bundle_path_as_array = self.path_to_array(bundle_path)
+            value = self.tree_get(change_index, bundle_path_as_array)
+            if value:
+                print 'uploading: ', bundle_path
+                subprocess.call([sys.argv[0], 'up', bundle_path])
+        # update .codalab/index.json
+        with open('.codalab/index.json', 'w') as index_file:
+            index_file.write(json.dumps(current_index))
+
+"""
+    @Commands.command(
+        'padd',
+        help='',
+        arguments=(
+#            Commands.Argument('-f', '--force', help='Perform all garbage collection and database updates instead of just printing what would happen', action='store_true'),
+#            Commands.Argument('-d', '--data-hash', help='Compute the digest for every bundle and compare against data_hash for consistency', action='store_true'),
+#            Commands.Argument('-r', '--repair', help='When used with --force and --data-hash, repairs incorrect data_hash in existing bundles', action='store_true'),
+        ),
+    )
+    def do_padd_command(self, args):
+        pass
+    """
