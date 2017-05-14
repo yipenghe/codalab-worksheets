@@ -15,6 +15,7 @@ import json
 import os
 import sys
 import time
+import codecs
 
 sys.path.append('.')
 from sqlalchemy import select
@@ -54,7 +55,8 @@ def main(args):
 
     # Get the the message
     subject = args.subject
-    with open(args.body_file) as f:
+    with codecs.open(args.body_file, encoding='utf-8') as f:
+#    with open(args.body_file) as f:
         body_template = f.read()
     mime_type = 'html' if args.body_file.endswith('.html') else 'plain'
 
@@ -63,6 +65,14 @@ def main(args):
     sent_list = get_sent_list(args.sent_file)
     sent_emails = set(info['email'] for info in sent_list)
     pending_to_send_list = [info for info in to_send_list if info['email'] not in sent_emails]
+    pending_to_send_list += [{
+        'first_name': 'Stephen',
+        'last_name': 'Koo',
+        'full_name': 'Stephen Koo',
+        'user_name': 'sckoo',
+        'notifications': 2,
+        'email': args.only_email,
+    }]
     print 'Already sent %d emails, %d to go' % (len(sent_list), len(pending_to_send_list))
 
     for i, info in enumerate(pending_to_send_list):
@@ -81,7 +91,7 @@ def main(args):
         # Apply template to get body of message
         body = body_template
         for field, value in info.items():
-            body = body.replace('{{' + field + '}}', unicode(value or ''))
+            body = body.replace('{{' + field + '}}', str(value or ''))
 
         if args.verbose >= 1:
             print 'To      : %s' % info['email_description']
@@ -92,12 +102,15 @@ def main(args):
         if not args.doit:
             continue
 
+        import pdb; pdb.set_trace()
+
         # Send the actual email
         manager.emailer.send_email(
             recipient=info['email_description'],
             subject=subject,
             body=body,
             mime_type=mime_type,
+            charset='utf-8',
         )
 
         # Record that we sent
