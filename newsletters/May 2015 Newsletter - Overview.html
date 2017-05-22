@@ -551,7 +551,7 @@
                         
                             Hello {{greeting_name}}!<br>
 <br>
-Thank you for using <a href="https://worksheets.codalab.org/">CodaLab Worksheets</a>! We wanted to give you an update on the newest features we’ve been rolling out.&nbsp;
+The goal of&nbsp;<a href="https://worksheets.codalab.org/">CodaLab Worksheets</a>&nbsp;is to make researchers more efficient - check out this new short overview&nbsp;<a href="https://youtu.be/WwFGfgf3-5s">video</a>&nbsp;to see what CodaLab is about.
                         </td>
                     </tr>
                 </tbody></table>
@@ -601,9 +601,9 @@ Thank you for using <a href="https://worksheets.codalab.org/">CodaLab Worksheets
                         
                         <td valign="top" class="mcnTextContent" style="padding-top:0; padding-right:18px; padding-bottom:9px; padding-left:18px;">
                         
-                            <p dir="ltr"><strong id="docs-internal-guid-b168ba60-fae7-653b-d697-161d7b083272">Installing custom packages</strong></p>
+                            <p dir="ltr"><strong id="docs-internal-guid-b168ba60-f377-2a84-73f1-9a0df6ba0d93">Command-line interface</strong></p>
 
-<p dir="ltr">Want to use CodaLab with a specific library? You can install custom libraries on CodaLab by using Docker, which allows you to capture each of the environments your commands runs in. See the&nbsp;<a href="https://github.com/codalab/codalab-worksheets/wiki/Creating-Docker-Images">docs</a> for more.</p>
+<p dir="ltr">CodaLab comes with a powerful <a href="https://github.com/codalab/codalab-worksheets/wiki/CLI-Basics" target="_blank">CLI</a>, which you can now install/upgrade by simply running: `pip install -U codalab`.</p>
 
                         </td>
                     </tr>
@@ -636,9 +636,11 @@ Thank you for using <a href="https://worksheets.codalab.org/">CodaLab Worksheets
                         
                         <td valign="top" class="mcnTextContent" style="padding-top:0; padding-right:18px; padding-bottom:9px; padding-left:18px;">
                         
-                            <p dir="ltr"><strong id="docs-internal-guid-b168ba60-f37d-8689-a290-f0c8385de88a">Using custom workers</strong></p>
+                            <p dir="ltr"><strong id="docs-internal-guid-b168ba60-fae7-653b-d697-161d7b083272">Custom libraries&nbsp;/&nbsp;machines</strong></p>
 
-<p dir="ltr">Need custom hardware? You can use your own machines and plug them into CodaLab’s distributed worker system. Check out the <a href="https://github.com/codalab/codalab-worksheets/wiki/Execution#running-your-own-worker">docs</a> for instructions on how.</p>
+<p dir="ltr">Does your code fail because certain libraries aren't installed? &nbsp;Learn&nbsp;how to&nbsp;<a href="https://github.com/codalab/codalab-worksheets/wiki/Creating-Docker-Images" target="_blank">build&nbsp;your own Docker images</a>, which simply involves specifying a list of&nbsp;install commands.<br>
+<br>
+Need GPUs? &nbsp;CodaLab now has publicly available GPUs! &nbsp;Just use the `--request-gpus` flag as shown in the<a href="https://github.com/codalab/codalab-worksheets/wiki/CLI-Reference" target="_blank">&nbsp;CLI reference</a>. &nbsp;Also, you can use your own hardware by&nbsp;<a href="https://github.com/codalab/codalab-worksheets/wiki/Execution#running-your-own-worker" target="_blank">hooking up your own machines into CodaLab</a>&nbsp;and have them only run your jobs.&nbsp;</p>
 
                         </td>
                     </tr>
@@ -673,7 +675,7 @@ Thank you for using <a href="https://worksheets.codalab.org/">CodaLab Worksheets
                         
                             <p dir="ltr"><strong id="docs-internal-guid-b168ba60-f37c-4635-c039-e283cfee11a4">REST API</strong></p>
 
-<p dir="ltr">Want to automate your workflows by integrating with CodaLab? You can check out the&nbsp;<a href="https://github.com/codalab/codalab-cli/blob/master/docs/rest.md">docs</a> for our new REST API.</p>
+<p dir="ltr">You can think about CodaLab as just a service for storing data and running commands. &nbsp;We have exposed a <a href="https://github.com/codalab/codalab-cli/blob/master/docs/rest.md">REST API</a>, which allows you to build new applications on top of CodaLab.&nbsp; For example, we used the REST API to <a href="https://nlp.stanford.edu/blog/cs224n-competition-on-the-stanford-question-answering-dataset-with-codalab/ ">run a competition</a>&nbsp;with 160 teams on SQuAD, a question answering dataset.</p>
 
                         </td>
                     </tr>
@@ -706,147 +708,7 @@ Thank you for using <a href="https://worksheets.codalab.org/">CodaLab Worksheets
                         
                         <td valign="top" class="mcnTextContent" style="padding-top:0; padding-right:18px; padding-bottom:9px; padding-left:18px;">
                         
-                            <p dir="ltr"><strong id="docs-internal-guid-b168ba60-f37c-ff42-65d8-09979b6a864a">SQuAD Competition</strong></p>
-
-<p dir="ltr">Using CodaLab (via the REST API), we ran a competition with 160 teams using SQuAD, a question answering dataset with over 100,000 questions. &nbsp;Read our <a href="https://nlp.stanford.edu/blog/cs224n-competition-on-the-stanford-question-answering-dataset-with-codalab/ ">blog post</a> for details.</p>
-
-                        </td>
-                    </tr>
-                </tbody></table>
-				<!--[if mso]>
-				</td>
-				<![endif]-->
-                
-				<!--[if mso]>
-				</tr>
-				</table>
-				<![endif]-->
-            </td>
-        </tr>
-    </tbody>
-</table><table border="0" cellpadding="0" cellspacing="0" width="100%" class="mcnTextBlock" style="min-width:100%;">
-    <tbody class="mcnTextBlockOuter">
-        <tr>
-            <td valign="top" class="mcnTextBlockInner" style="padding-top:9px;">
-              	<!--[if mso]>
-				<table align="left" border="0" cellspacing="0" cellpadding="0" width="100%" style="width:100%;">
-				<tr>
-				<![endif]-->
-			    
-				<!--[if mso]>
-				<td valign="top" width="600" style="width:600px;">
-				<![endif]-->
-                <table align="left" border="0" cellpadding="0" cellspacing="0" style="max-width:100%; min-width:100%;" width="100%" class="mcnTextContentContainer">
-                    <tbody><tr>
-                        
-                        <td valign="top" class="mcnTextContent" style="padding-top:0; padding-right:18px; padding-bottom:9px; padding-left:18px;">
-                        
-                            <p dir="ltr"><strong id="docs-internal-guid-b168ba60-f377-2a84-73f1-9a0df6ba0d93">Pip install</strong></p>
-
-<p dir="ltr">We wanted to make it easier for you to install and upgrade your CodaLab CLI, so now it’s on PyPI! Install CodaLab’s CLI by using `pip install codalab-cli` and upgrade with &nbsp;`pip install -U codalab-cli`.</p>
-
-                        </td>
-                    </tr>
-                </tbody></table>
-				<!--[if mso]>
-				</td>
-				<![endif]-->
-                
-				<!--[if mso]>
-				</tr>
-				</table>
-				<![endif]-->
-            </td>
-        </tr>
-    </tbody>
-</table><table border="0" cellpadding="0" cellspacing="0" width="100%" class="mcnTextBlock" style="min-width:100%;">
-    <tbody class="mcnTextBlockOuter">
-        <tr>
-            <td valign="top" class="mcnTextBlockInner" style="padding-top:9px;">
-              	<!--[if mso]>
-				<table align="left" border="0" cellspacing="0" cellpadding="0" width="100%" style="width:100%;">
-				<tr>
-				<![endif]-->
-			    
-				<!--[if mso]>
-				<td valign="top" width="600" style="width:600px;">
-				<![endif]-->
-                <table align="left" border="0" cellpadding="0" cellspacing="0" style="max-width:100%; min-width:100%;" width="100%" class="mcnTextContentContainer">
-                    <tbody><tr>
-                        
-                        <td valign="top" class="mcnTextContent" style="padding-top:0; padding-right:18px; padding-bottom:9px; padding-left:18px;">
-                        
-                            <p dir="ltr"><strong id="docs-internal-guid-b168ba60-fae8-252b-0d7d-1f69b7897c39">Help Button</strong></p>
-
-<p dir="ltr">Have a question or comment on CodaLab? You can ask it directly on CodaLab by clicking the button on the bottom right of the page.</p>
-
-                        </td>
-                    </tr>
-                </tbody></table>
-				<!--[if mso]>
-				</td>
-				<![endif]-->
-                
-				<!--[if mso]>
-				</tr>
-				</table>
-				<![endif]-->
-            </td>
-        </tr>
-    </tbody>
-</table><table border="0" cellpadding="0" cellspacing="0" width="100%" class="mcnTextBlock" style="min-width:100%;">
-    <tbody class="mcnTextBlockOuter">
-        <tr>
-            <td valign="top" class="mcnTextBlockInner" style="padding-top:9px;">
-              	<!--[if mso]>
-				<table align="left" border="0" cellspacing="0" cellpadding="0" width="100%" style="width:100%;">
-				<tr>
-				<![endif]-->
-			    
-				<!--[if mso]>
-				<td valign="top" width="600" style="width:600px;">
-				<![endif]-->
-                <table align="left" border="0" cellpadding="0" cellspacing="0" style="max-width:100%; min-width:100%;" width="100%" class="mcnTextContentContainer">
-                    <tbody><tr>
-                        
-                        <td valign="top" class="mcnTextContent" style="padding-top:0; padding-right:18px; padding-bottom:9px; padding-left:18px;">
-                        
-                            <p dir="ltr"><strong>Overview Video</strong><br>
-<br>
-Want to share CodaLab with your colleagues? We created a <a href="https://youtu.be/WwFGfgf3-5s">video</a> to show how CodaLab makes your research reproducible and more efficient.</p>
-
-                        </td>
-                    </tr>
-                </tbody></table>
-				<!--[if mso]>
-				</td>
-				<![endif]-->
-                
-				<!--[if mso]>
-				</tr>
-				</table>
-				<![endif]-->
-            </td>
-        </tr>
-    </tbody>
-</table><table border="0" cellpadding="0" cellspacing="0" width="100%" class="mcnTextBlock" style="min-width:100%;">
-    <tbody class="mcnTextBlockOuter">
-        <tr>
-            <td valign="top" class="mcnTextBlockInner" style="padding-top:9px;">
-              	<!--[if mso]>
-				<table align="left" border="0" cellspacing="0" cellpadding="0" width="100%" style="width:100%;">
-				<tr>
-				<![endif]-->
-			    
-				<!--[if mso]>
-				<td valign="top" width="600" style="width:600px;">
-				<![endif]-->
-                <table align="left" border="0" cellpadding="0" cellspacing="0" style="max-width:100%; min-width:100%;" width="100%" class="mcnTextContentContainer">
-                    <tbody><tr>
-                        
-                        <td valign="top" class="mcnTextContent" style="padding-top:0; padding-right:18px; padding-bottom:9px; padding-left:18px;">
-                        
-                            <p dir="ltr">And as always, let us know any questions or problems you’re having by opening an issue on <a href="https://github.com/codalab/codalab-cli/issues">our Github</a>. We hope you continue to enjoy using CodaLab!<br>
+                            <p dir="ltr">And as always, let us know if you have any&nbsp;questions or feedback. &nbsp;Simply click on the new Help button on&nbsp;the bottom right of the page or submit a <a href="https://github.com/codalab/codalab-worksheets/issues/new" target="_blank">GitHub issue</a>.&nbsp; We hope you continue to enjoy using CodaLab!<br>
 <br>
 <strong id="docs-internal-guid-b168ba60-f37e-375f-eceb-0dd7a098cc81">&nbsp;&nbsp;&nbsp;— The CodaLab Team</strong></p>
 
@@ -881,7 +743,7 @@ Want to share CodaLab with your colleagues? We created a <a href="https://youtu.
                         
                         <td valign="top" class="mcnTextContent" style="padding-top:0; padding-right:18px; padding-bottom:9px; padding-left:18px;">
                         
-                            <p dir="ltr">This email was sent to {{email}}. You can change your <a href="http://worksheets.codalab.org/account/profile">email preferences</a> at any time.&nbsp;</p>
+                            <p dir="ltr"><span style="font-size:10px">This email was sent to {{email}}. You can change your <a href="http://worksheets.codalab.org/account/profile">email preferences</a> at any time.&nbsp;</span></p>
 
                         </td>
                     </tr>
