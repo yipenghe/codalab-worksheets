@@ -145,6 +145,7 @@ def general_command(worksheet_uuid, command):
 	    # examples: run '\''
             lexer = shlex.shlex(command, posix=True)
             lexer.escapedquotes = '\'"'
+            lexer.whitespace_split = True
             args = list(lexer)
         except ValueError as e:
             raise UsageError(e.message)
