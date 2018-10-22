@@ -35,3 +35,4 @@ script:
   - ./codalab/bin/cl upload -c stuff
   - printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" | sshpass -p "" ./codalab/bin/cl rm ^
   - ./venv/bin/python test-cli.py default
+  - ./test-worker.sh
