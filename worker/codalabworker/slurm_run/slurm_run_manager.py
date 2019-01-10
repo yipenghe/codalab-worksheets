@@ -5,7 +5,6 @@ logger = logging.getLogger(__name__)
 
 
 class SlurmRunManager(BaseRunManager):
-
     def __init__(self):
         pass
 
