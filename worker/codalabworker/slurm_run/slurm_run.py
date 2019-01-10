@@ -7,7 +7,7 @@ import threading
 import time
 
 from codalabworker.fsm import DependencyStage
-from codalabworker.bundle_state import State
+from codalabworker.bundle_state import State, WorkerRun
 
 
 def parse_args():
@@ -38,6 +38,7 @@ class SlurmRun(object):
         self.state_file_lock_path = self.state_file_path + '.lock'
         self.command_file_path = comm_file_path + '.commands'
         self.command_file_lock_path = self.command_file_path + '.lock'
+        self.run_state = WorkerRun(uuid=bundle['uuid'], run_status='', start_time=time.time(), docker_image='', info={}, state=State.PREPARING)
 
     def write_state(self):
         while True:
