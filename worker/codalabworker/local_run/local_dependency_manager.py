@@ -21,9 +21,36 @@ DependencyState = namedtuple(
 )
 
 
+DependencyKey = namedtuple('DependencyKey', 'parent_uuid parent_path')
+
+
+def store_dependency(dependency_path, fileobj, target_type):
+    """
+    Copy the dependency fileobj to its path in the local filesystem
+    Overwrite existing files by the same name if found
+    (may happen if filesystem modified outside the dependency manager,
+     for example during an update if the state gets reset but filesystem
+     doesn't get cleared)
+    """
+    try:
+        if os.path.exists(dependency_path):
+            logger.info('Path %s already exists, overwriting', dependency_path)
+            if os.path.isdir(dependency_path):
+                shutil.rmtree(dependency_path)
+            else:
+                os.remove(dependency_path)
+        if target_type == 'directory':
+            un_tar_directory(fileobj, dependency_path, 'gz')
+        else:
+            with open(dependency_path, 'wb') as f:
+                logger.debug('copying file to %s', dependency_path)
+                shutil.copyfileobj(fileobj, f)
+    except Exception:
+        raise
+
+
 class DownloadAbortedException(Exception):
     """
-
     Exception raised by the download if a download is killed before it is complete
     """
 
@@ -324,11 +351,10 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         """
         Normalize the path for the dependency by replacing / with _, avoiding conflicts
         """
-        parent_uuid, parent_path = dependency
-        if parent_path:
-            path = os.path.join(parent_uuid, parent_path)
+        if dependency.parent_path:
+            path = os.path.join(dependency.parent_uuid, dependency.parent_path)
         else:
-            path = parent_uuid
+            path = dependency.parent_uuid
         path = path.replace(os.path.sep, '_')
 
         # You could have a conflict between, for example a/b_c and
@@ -338,30 +364,6 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                 path = path + '_'
             self._paths.add(path)
         return path
-
-    def _store_dependency(self, dependency_path, fileobj, target_type):
-        """
-        Copy the dependency fileobj to its path in the local filesystem
-        Overwrite existing files by the same name if found
-        (may happen if filesystem modified outside the dependency manager,
-         for example during an update if the state gets reset but filesystem
-         doesn't get cleared)
-        """
-        try:
-            if os.path.exists(dependency_path):
-                logger.info('Path %s already exists, overwriting', dependency_path)
-                if os.path.isdir(dependency_path):
-                    shutil.rmtree(dependency_path)
-                else:
-                    os.remove(dependency_path)
-            if target_type == 'directory':
-                un_tar_directory(fileobj, dependency_path, 'gz')
-            else:
-                with open(dependency_path, 'wb') as f:
-                    logger.debug('copying file to %s', dependency_path)
-                    shutil.copyfileobj(fileobj, f)
-        except Exception:
-            raise
 
     @property
     def all_dependencies(self):
@@ -386,11 +388,11 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                     )
 
             dependency_path = os.path.join(self.dependencies_dir, dependency_state.path)
-            logger.debug('Downloading dependency %s/%s', parent_uuid, parent_path)
+            logger.debug('Downloading dependency %s/%s', dependency.parent_uuid, dependency.parent_path)
             try:
                 # Start async download to the fileobj
                 fileobj, target_type = self._bundle_service.get_bundle_contents(
-                    parent_uuid, parent_path
+                    dependency.parent_uuid, dependency.parent_path
                 )
                 with closing(fileobj):
                     # "Bug" the fileobj's read function so that we can keep
@@ -407,13 +409,13 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                     fileobj.read = interruptable_read
 
                     # Start copying the fileobj to filesystem dependency path
-                    self._store_dependency(dependency_path, fileobj, target_type)
+                    store_dependency(dependency_path, fileobj, target_type)
 
                 logger.debug(
                     'Finished downloading %s dependency %s/%s to %s',
                     target_type,
-                    parent_uuid,
-                    parent_path,
+                    dependency.parent_uuid,
+                    dependency.parent_path,
                     dependency_path,
                 )
                 with self._dependency_locks[dependency]:
@@ -427,7 +429,6 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                     ] = "Dependency download failed: %s " % str(e)
 
         dependency = dependency_state.dependency
-        parent_uuid, parent_path = dependency
         self._downloading.add_if_new(dependency, threading.Thread(target=download, args=[]))
 
         if self._downloading[dependency].is_alive():
