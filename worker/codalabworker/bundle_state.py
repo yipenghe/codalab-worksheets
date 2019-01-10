@@ -1,3 +1,17 @@
+class Dependency(object):
+    """
+    Defines a RunBundle dependency passed from server to worker.
+    Refer to codaalab/lib/bundle_util.py#bundle_to_bundle_info() for how the
+    dict to construct this object is created on server side.
+    """
+    def __init__(self, parent_name, parent_path, parent_uuid, child_path, child_uuid):
+        self.parent_name = parent_name
+        self.parent_path = parent_path
+        self.parent_uuid = parent_uuid
+        self.child_path = child_path
+        self.child_uuid = child_uuid
+
+
 class BundleInfo(object):
     """
     Defines the bundle info passed to the worker by the server.
@@ -15,19 +29,23 @@ class BundleInfo(object):
         state,
         is_anonymous,
         metadata,
-        dependencies,
+        dependencies,  # List[str, Dict[str, str]]
         args,
     ):
-        self.uuid = uuid
-        self.bundle_type = bundle_type
-        self.owner_id = owner_id
-        self.command = command
-        self.data_hash = data_hash
-        self.state = state
-        self.is_anonymous = is_anonymous
-        self.metadata = metadata
-        self.dependencies = dependencies
-        self.args = args
+        self.uuid = uuid  # type: str
+        self.bundle_type = bundle_type  # type: str
+        self.owner_id = owner_id  # type: str
+        self.command = command  # type: str
+        self.data_hash = data_hash  # type: str
+        self.state = state  # type: State
+        self.is_anonymous = is_anonymous  # type: bool
+        self.metadata = metadata  # type: Dict[Any, Any]
+        self.args = args  # type: Any
+        self.dependencies = [Dependency(parent_name=dep['parent_name'],
+                                        parent_path=dep['parent_path'],
+                                        parent_uuid=dep['parent_uuid'],
+                                        child_path=dep['child_path'],
+                                        child_uuid=dep['child_uuid']) for dep in dependencies]  # type: List[Dependency]
 
         @classmethod
         def from_dict(cls, dct):
@@ -58,6 +76,9 @@ class RunResources(object):
         self.memory = memory  # type: int
         self.disk = disk  # type: int
         self.network = network  # type: bool
+
+        if ':' not in self.docker_image:
+            self.docker_image += ':latest'
 
     @classmethod
     def from_dict(cls, dct):
