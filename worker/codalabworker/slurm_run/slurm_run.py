@@ -7,7 +7,7 @@ import threading
 import time
 
 from codalabworker.fsm import DependencyStage
-from codalabworker.bundle_state import State, WorkerRun
+from codalabworker.bundle_state import State, WorkerRun, RunResources
 
 
 def parse_args():
@@ -32,7 +32,7 @@ class SlurmRun(object):
 
     def __init__(self, bundle, resources, comm_file_path):
         self.bundle = bundle
-        self.resource = resources
+        self.resources = resources  # type: RunResources
         self.docker = docker.from_env()
         self.state_file_path = comm_file_path + '.state'
         self.state_file_lock_path = self.state_file_path + '.lock'

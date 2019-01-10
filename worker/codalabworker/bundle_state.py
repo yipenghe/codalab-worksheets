@@ -1,3 +1,27 @@
+class RunResources(object):
+    """
+    Defines all the resource fields the server propagates to the worker for its runs
+    """
+    def __init__(self, cpus, gpus, docker_image, time, memory, disk, network):
+        self.cpus = cpus  # type: int
+        self.gpus = gpus  # type: int
+        self.docker_image = docker_image  # type: str
+        self.time = time  # type: int
+        self.memory = memory  # type: int
+        self.disk = disk  # type: int
+        self.network = network  # type: bool
+
+    @classmethod
+    def from_dict(cls, dct):
+        return cls(cpus=int(dct['cpus']),
+                   gpus=int(dct['gpus']),
+                   docker_image=dct['docker_image'],
+                   time=int(dct['time']),
+                   memory=int(dct['memory']),
+                   disk=int(dct['disk']),
+                   network=bool(dct['network']))
+
+
 class WorkerRun(object):
     """
     Defines all the field the worker needs to check in with the server for its runs
