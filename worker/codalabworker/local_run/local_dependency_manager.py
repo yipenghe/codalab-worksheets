@@ -21,9 +21,6 @@ DependencyState = namedtuple(
 )
 
 
-DependencyKey = namedtuple('DependencyKey', 'parent_uuid parent_path')
-
-
 def store_dependency(dependency_path, fileobj, target_type):
     """
     Copy the dependency fileobj to its path in the local filesystem
@@ -99,9 +96,9 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
 
         # File paths that are currently being used to store dependencies. Used to prevent conflicts
         self._paths = set()
-        # (parent_uuid, parent_path) -> DependencyState
+        # DependencyKey -> DependencyState
         self._dependencies = dict()
-        # (parent_uuid, parent_path) -> WorkerThread(thread, success, failure_message)
+        # DependencyKey -> WorkerThread(thread, success, failure_message)
         self._downloading = ThreadDict(fields={'success': False, 'failure_message': None})
         self._load_state()
 
@@ -271,7 +268,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
 
     def has(self, dependency):
         """
-        Takes a dependency = (parent_uuid, parent_path)
+        Takes a DependencyKey (as defined in codalabworker/bundle_state
         Returns true if the manager has processed this dependency
         """
         with self._global_lock:
@@ -377,22 +374,24 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                 Callback method for bundle service client updates dependency state and
                 raises DownloadAbortedException if download is killed by dep. manager
                 """
-                with self._dependency_locks[dependency]:
-                    state = self._dependencies[dependency]
+                with self._dependency_locks[dependency_state.dependency_key]:
+                    state = self._dependencies[dependency_state.dependency_key]
                     if state.killed:
                         raise DownloadAbortedException("Aborted by user")
-                    self._dependencies[dependency] = state._replace(
+                    self._dependencies[dependency_state.dependency_key] = state._replace(
                         size_bytes=bytes_downloaded,
                         message="Downloading dependency: %s downloaded"
                         % size_str(bytes_downloaded),
                     )
 
             dependency_path = os.path.join(self.dependencies_dir, dependency_state.path)
-            logger.debug('Downloading dependency %s/%s', dependency.parent_uuid, dependency.parent_path)
+            logger.debug(
+                'Downloading dependency %s/%s', dependency_state.dependency_key.parent_uuid, dependency_state.dependency_key.parent_path
+            )
             try:
                 # Start async download to the fileobj
                 fileobj, target_type = self._bundle_service.get_bundle_contents(
-                    dependency.parent_uuid, dependency.parent_path
+                    dependency_state.dependency_key.parent_uuid, dependency_state.dependency_key.parent_path
                 )
                 with closing(fileobj):
                     # "Bug" the fileobj's read function so that we can keep
@@ -414,30 +413,29 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                 logger.debug(
                     'Finished downloading %s dependency %s/%s to %s',
                     target_type,
-                    dependency.parent_uuid,
-                    dependency.parent_path,
+                    dependency_state.dependency_key.parent_uuid,
+                    dependency_state.dependency_key.parent_path,
                     dependency_path,
                 )
-                with self._dependency_locks[dependency]:
-                    self._downloading[dependency]['success'] = True
+                with self._dependency_locks[dependency_state.dependency_key]:
+                    self._downloading[dependency_state.dependency_key]['success'] = True
 
             except Exception as e:
-                with self._dependency_locks[dependency]:
-                    self._downloading[dependency]['success'] = False
-                    self._downloading[dependency][
+                with self._dependency_locks[dependency_state.dependency_key]:
+                    self._downloading[dependency_state.dependency_key]['success'] = False
+                    self._downloading[dependency_state.dependency_key][
                         'failure_message'
                     ] = "Dependency download failed: %s " % str(e)
 
-        dependency = dependency_state.dependency
-        self._downloading.add_if_new(dependency, threading.Thread(target=download, args=[]))
+        self._downloading.add_if_new(dependency_state.dependency_key, threading.Thread(target=download, args=[]))
 
-        if self._downloading[dependency].is_alive():
+        if self._downloading[dependency_state.dependency_key].is_alive():
             return dependency_state
 
-        success = self._downloading[dependency]['success']
-        failure_message = self._downloading[dependency]['failure_message']
+        success = self._downloading[dependency_state.dependency_key]['success']
+        failure_message = self._downloading[dependency_state.dependency_key]['failure_message']
 
-        self._downloading.remove(dependency)
+        self._downloading.remove(dependency_state.dependency_key)
         if success:
             return dependency_state._replace(
                 stage=DependencyStage.READY, message="Download complete"

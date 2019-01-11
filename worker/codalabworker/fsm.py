@@ -2,6 +2,7 @@ class DependencyState(object):
     '''
     Store the current DependencyStage of a dependency and a status message with extra info
     '''
+
     def __init__(self, status, stage):
         self.status = status  # type: str
         self.stage = stage  # type: DependencyStage
