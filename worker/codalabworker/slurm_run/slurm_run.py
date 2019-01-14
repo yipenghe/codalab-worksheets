@@ -124,54 +124,36 @@ class SlurmRun(object):
         )
 
         self.killed = False
+        self.has_contents = False
         self.running = True
 
-    def write_state(self):
-        """
-        Writes the state of the run to the shared state Pickle file
-        every UPDATE_INTERVAL seconds
-        """
-        while self.running:
-            while True:
-                try:
-                    lock_file = open(self.state_file_lock_path, 'w+')
-                    fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                    break
-                except IOError as ex:
-                    if ex.errno != errno.EAGAIN:
-                        raise
-                    else:
-                        time.sleep(0.1)
-            with open(self.state_file_path, 'wb') as f:
-                with self.run_state_lock:
-                    pickle.dump(self.run_state, f)
-            fcntl.flock(lock_file, fcntl.LOCK_UN)
-            lock_file.close()
-        time.sleep(UPDATE_INTERVAL)
+    def start(self):
+        self.state_file_write_thread.start()
+        self.command_file_read_thread.start()
+        try:
+            self.prepare_requirements()
+            if not self.killed:
+                container = self.run_container()
+                self.has_contents = True
+                self.monitor_container(container)
+        except Exception as ex:
+            # TODO: failure case
+            pass
+        self.cleanup()
+        self.finalize_bundle()
 
-    def read_commands(self):
+    def cleanup(self):
         """
-        Reads bundle commands written by the worker to the shared commands file
-        every UPDATE_INTERVAL seconds
+        Cleans up the downloaded dependencies, docker image and the container
         """
-        while self.running:
-            while True:
-                try:
-                    lock_file = open(self.command_file_lock_path, 'w+')
-                    fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                    break
-                except IOError as ex:
-                    if ex.errno != errno.EAGAIN:
-                        raise
-                    else:
-                        time.sleep(0.1)
-            with open(self.command_file_path, 'wrb') as f:
-                with self.commands_lock:
-                    self.commands = pickle.load(f)
-            fcntl.flock(lock_file, fcntl.LOCK_UN)
-            lock_file.close()
-            self.apply_commands()
-        time.sleep(UPDATE_INTERVAL)
+        pass
+
+    def finalize_bundle():
+        """
+        Tells the RunManager that this bundle is complete and that the results can now be uploaded
+        and the bundle finalized
+        """
+        pass
 
     def apply_commands(self):
         """
@@ -180,20 +162,9 @@ class SlurmRun(object):
             - read
             - write
             - netcat
+            - finalize
         """
         pass
-
-    def start(self):
-        self.state_file_write_thread.start()
-        self.command_file_read_thread.start()
-        try:
-            self.prepare_requirements()
-            if not self.killed:
-                self.run_container()
-        except Exception as ex:
-            # TODO: failure case
-            pass
-        self.finalize()
 
     def assign_path(self, dependency):
         """
@@ -393,7 +364,7 @@ class SlurmRun(object):
         :param container: A Docker Container object for the run
         """
         def check_disk_utilization():
-            while self.running:
+            while not self.run_state.info['finished']:
                 start_time = time.time()
                 try:
                     disk_utilization = get_path_size(self.bundle.path)
@@ -424,7 +395,7 @@ class SlurmRun(object):
             return finished, exitcode, failure_message
 
         def check_resource_utilization():
-            """
+            """.
             Checks the time, memory and disk use of the container, setting it up to be killed
             if it is going over its allocated resources
             :returns: List[str]: Kill messages with reasons to kill if there are reasons, otherwise empty
@@ -463,30 +434,68 @@ class SlurmRun(object):
 
             return kill_messages
 
-        finished, exitcode, failure_message = self.check_and_report_finished()
-        kill_messages = self.check_resource_utilization()
-        if kill_messages:
-            self.killed = True
+        finished = False
+        while not self.killed and not finished:
+            time.sleep(UPDATE_INTERVAL)
+            finished, exitcode, failure_message = self.check_and_report_finished()
+            kill_messages = self.check_resource_utilization()
+            if kill_messages:
+                self.killed = True
 
-        if self.killed:
-            try:
-                container.kill()
-            except docker.errors.APIError:
-                finished, _, _ = docker_utils.check_finished(container)
-                if not finished:
-                    # If we can't kill a Running container, something is wrong
-                    # Otherwise all well
-                    traceback.print_exc()
-            self.disk_utilization_thread.join()
-            self.cleanup()
-        elif self.run_state.info['finished']:
-            self.disk_utilization_thread.join()
-            self.cleanup()
+            if self.killed:
+                try:
+                    container.kill()
+                except docker.errors.APIError:
+                    finished, _, _ = docker_utils.check_finished(container)
+                    if not finished:
+                        # If we can't kill a Running container, something is wrong
+                        # Otherwise all well
+                        traceback.print_exc()
+        self.disk_utilization_thread.join()
 
-    def run_container(self):
+    def write_state(self):
         """
-        Prepares and runs the Docker container for the bundle
+        Writes the state of the run to the shared state Pickle file
+        every UPDATE_INTERVAL seconds
         """
+        while self.running:
+            while True:
+                try:
+                    lock_file = open(self.state_file_lock_path, 'w+')
+                    fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    break
+                except IOError as ex:
+                    if ex.errno != errno.EAGAIN:
+                        raise
+                    else:
+                        time.sleep(0.1)
+            with open(self.state_file_path, 'wb') as f:
+                with self.run_state_lock:
+                    pickle.dump(self.run_state, f)
+            fcntl.flock(lock_file, fcntl.LOCK_UN)
+            lock_file.close()
+        time.sleep(UPDATE_INTERVAL)
 
-        container = self.start_container()
-        self.monitor_container(container)
+    def read_commands(self):
+        """
+        Reads bundle commands written by the worker to the shared commands file
+        every UPDATE_INTERVAL seconds
+        """
+        while self.running:
+            while True:
+                try:
+                    lock_file = open(self.command_file_lock_path, 'w+')
+                    fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    break
+                except IOError as ex:
+                    if ex.errno != errno.EAGAIN:
+                        raise
+                    else:
+                        time.sleep(0.1)
+            with open(self.command_file_path, 'wrb') as f:
+                with self.commands_lock:
+                    self.commands = pickle.load(f)
+            fcntl.flock(lock_file, fcntl.LOCK_UN)
+            lock_file.close()
+            self.apply_commands()
+        time.sleep(UPDATE_INTERVAL)
