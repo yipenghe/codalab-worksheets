@@ -1,14 +1,14 @@
 import React from 'react';
 import { Router, Route, Link, Redirect, withRouter, Switch } from 'react-router-dom';
 import { CookiesProvider, withCookies } from 'react-cookie';
+import Cookies from 'universal-cookie';
 
 import { MuiThemeProvider } from '@material-ui/core/styles';
 import CodalabTheme from './theme';
+import history from './history';
 
 // Components
 import UserInfo from './components/UserInfo';
-import HomePage from './components/HomePage';
-import $ from 'jquery';
 import NavBar from './components/NavBar';
 import Footer from './components/Footer';
 import Login from './components/Login';
@@ -25,10 +25,9 @@ import {
 } from './components/PasswordReset';
 
 // Routes
+import HomePage from './routes/HomePage';
 import BundleRoute from './routes/BundleRoute';
 
-import history from './history';
-import Cookies from 'universal-cookie';
 
 function CodalabApp() {
     return (
