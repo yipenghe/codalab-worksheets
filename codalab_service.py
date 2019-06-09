@@ -16,7 +16,7 @@ def main():
 
 class CodalabArgs(argparse.Namespace):
     DEFAULT_ARGS = {
-        'version': 'master',
+        'version': 'latest',
         'dev': False,
         'push': False,
         'docker_user': None,
