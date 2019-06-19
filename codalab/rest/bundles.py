@@ -402,6 +402,30 @@ def _fetch_bundle_contents_info(uuid, path=''):
 
     return {'data': info}
 
+@get('/bundles/<uuid:re:%s>/parents/' % spec_util.UUID_STR, name='fetch_bundle_parents_info')
+def _get_parents(uuid):
+    depth = query_get_type(int, 'depth', default=0)
+    if depth < 0:
+        abort(httplib.BAD_REQUEST, "Depth must be at least 0")
+    specs = query_get_list('specs')
+    worksheet_uuid = request.query.get('worksheet')
+    if specs:
+        # Resolve bundle specs
+        bundle_uuids = canonicalize.get_bundle_uuids(
+            local.model, request.user, worksheet_uuid, specs
+        )
+    else:
+        abort(
+            httplib.BAD_REQUEST,
+            "Request must include either 'keywords' " "or 'specs' query parameter",
+        )
+    parent_uuids = local.model.get_self_and_ancesters(bundle_uuids, depth=depth)
+    final_result = []
+    for level in range(len(parent_uuids)):
+        final_result.append([])
+        final_result[level].extend([build_bundles_document(parent_uuids[level])])
+    return {'data':final_result}
+
 
 @put('/bundles/<uuid:re:%s>/netcat/<port:int>/' % spec_util.UUID_STR, name='netcat_bundle')
 def _netcat_bundle(uuid, port):

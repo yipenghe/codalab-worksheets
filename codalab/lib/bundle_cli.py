@@ -127,6 +127,7 @@ BUNDLE_COMMANDS = (
     'write',
     'mount',
     'netcat',
+    'ancesters'
 )
 
 WORKSHEET_COMMANDS = ('new', 'add', 'wadd', 'work', 'print', 'wedit', 'wrm', 'wls')
@@ -2039,6 +2040,57 @@ class BundleCLI(object):
         if self.headless and not (args.field or args.raw or args.verbose):
             return ui_actions.serialize([ui_actions.OpenBundle(bundle['id']) for bundle in bundles])
 
+    @Commands.command(
+        'ancesters',
+        aliases=('anc',),
+        help='Show ancester bundles for a bundle.',
+        arguments=(
+            Commands.Argument(
+                'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter
+            ),
+            Commands.Argument('-f', '--field', help='Print out these comma-separated fields.'),
+            Commands.Argument(
+                '-n',
+                '--num',
+                type=int,
+                help='number of ancesters to print out',
+            ),
+            Commands.Argument(
+                '-v',
+                '--verbose',
+                action='store_true',
+                help='Print top-level contents of bundle, children bundles, and host worksheets.',
+            ),
+            Commands.Argument(
+                '-w',
+                '--worksheet-spec',
+                help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
+                completer=WorksheetsCompleter,
+            ),
+        ),
+    )
+    def do_ancesters_command(self, args):
+        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+
+        bundles_uuid = client.fetch_parents_info(
+            'bundles',
+            params={
+                'specs': args.bundle_spec,
+                'worksheet': worksheet_uuid,
+                'include': ['owner']
+                + (['children', 'group_permissions', 'host_worksheets'] if args.verbose else []),
+            },
+        )
+
+        level = len(bundles_uuid)
+        prefix=""
+        while (level >= 0):
+            for i, info in enumerate(bundles_uuid[level])
+                print >>self.stdout, prefix
+                if i > 0:
+                    print
+                self.print_basic_info(client, info, False)
     @staticmethod
     def key_value_str(key, value):
         return '%-26s: %s' % (

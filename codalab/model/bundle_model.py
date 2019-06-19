@@ -201,6 +201,22 @@ class BundleModel(object):
             result[row.parent_uuid].append(row.child_uuid)
         return result
 
+    def get_parent_uuids(self, uuids):
+        """
+        Get all bundles that depend on the bundle with the given uuids.
+        Return {child_uuid: [parent_uuid, ...], ...}
+        """
+        with self.engine.begin() as connection:
+            rows = connection.execute(
+                select(
+                    [cl_bundle_dependency.c.parent_uuid, cl_bundle_dependency.c.child_uuid]
+                ).where(cl_bundle_dependency.c.child_uuid.in_(uuids))
+            ).fetchall()
+        result = dict((uuid, []) for uuid in uuids)
+        for row in rows:
+            result[row.child_uuid].append(row.parent_uuid)
+        return result
+
     def get_host_worksheet_uuids(self, bundle_uuids):
         """
         Return list of worksheet uuids that contain the given bundle_uuids.
@@ -241,6 +257,35 @@ class BundleModel(object):
             frontier = new_frontier
             depth -= 1
         return visited
+
+    def get_self_and_ancesters(self, uuids, depth):
+        """
+        Get all bundles that the bundles with the given uuids depends on.
+        depth = 1 gets only 1 parent
+        returns {0: [self], 1:[parents of parents], 2:[parents of parents of parents],....}
+        """
+        #first visit direct parent, then parent of direct parent
+        frontier = uuids
+        visited = Set()
+        return_result = [[]]
+        level = 0
+        return_result[level].append(frontier)
+        visited.add(frontier)
+        while len(frontier) > 0 and level < depth:
+            # Get children of all nodes in frontier
+            result = self.get_parent_uuids(frontier)
+            result.append([])
+            level += 1
+            new_frontier = []
+            for l in result.values():
+                for uuid in l:
+                    if uuid in visited:
+                        continue
+                    new_frontier.append(uuid)
+                    visited.add(uuid)
+            return_result[level].extend(new_frontier)
+            frontier = new_frontier
+        return return_result
 
     def search_bundles(self, user_id, keywords):
         """
