@@ -2083,6 +2083,8 @@ class BundleCLI(object):
             if not bundle['dependencies']:
                 return
             for dep in bundle['dependencies']:
+                if 'parent_uuid' not in dep:
+                    continue
                 print_parent(dep['parent_uuid'], depth - 1, " " + prefix)
         for bundle_id in bundle_specs:
             print_parent(bundle_id, args.depth, "-")
