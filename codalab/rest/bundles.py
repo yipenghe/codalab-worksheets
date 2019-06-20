@@ -402,8 +402,9 @@ def _fetch_bundle_contents_info(uuid, path=''):
 
     return {'data': info}
 
-@get('/bundles/<uuid:re:%s>/parents/' % spec_util.UUID_STR, name='fetch_bundle_parents_info')
+@get('/bundles/parents/<uuid:re:%s>' % spec_util.UUID_STR, name='fetch_bundle_parents_info')
 def _get_parents(uuid):
+    print("REACHED HERE 3")
     depth = query_get_type(int, 'depth', default=0)
     if depth < 0:
         abort(httplib.BAD_REQUEST, "Depth must be at least 0")

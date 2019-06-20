@@ -53,7 +53,6 @@ class RestClient(object):
     ):
         if headers is None:
             headers = {}
-
         access_token = self._get_access_token()
         if authorized and access_token:
             headers['Authorization'] = 'Bearer ' + self._get_access_token()
@@ -64,7 +63,6 @@ class RestClient(object):
         headers['X-Requested-With'] = 'XMLHttpRequest'
         if query_params is not None:
             path = path + '?' + urllib.urlencode(query_params)
-
         # Everything needs to be utf-8 encoded or else urllib2 will complain
         if 'Content-Type' in headers:
             headers['Content-Type'] += '; charset=utf-8'
@@ -73,7 +71,6 @@ class RestClient(object):
         request_url = (self._base_url + path).encode('utf-8')
 
         headers.update(self._extra_headers)
-
         request = urllib2.Request(request_url, data=data, headers=headers)
         request.get_method = lambda: method
         if return_response:

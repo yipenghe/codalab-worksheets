@@ -591,7 +591,8 @@ class JsonApiClient(RestClient):
 
     @wrap_exception('Unable to fetch parent info of bundle {1}')
     def fetch_parents_info(self, bundle_id, depth=0):
-        request_path = '/bundles/%s/parents/' % (bundle_id)
+        request_path = '/bundles/parents/%s' % (bundle_id)
+        print("REACHED HERE 1")
         response = self._make_request('GET', request_path, query_params={'depth': depth})
         return response['data']
 

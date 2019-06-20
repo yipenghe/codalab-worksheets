@@ -2048,18 +2048,12 @@ class BundleCLI(object):
             Commands.Argument(
                 'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter
             ),
-            Commands.Argument('-f', '--field', help='Print out these comma-separated fields.'),
             Commands.Argument(
-                '-n',
-                '--num',
+                '-d',
+                '--depth',
                 type=int,
-                help='number of ancesters to print out',
-            ),
-            Commands.Argument(
-                '-v',
-                '--verbose',
-                action='store_true',
-                help='Print top-level contents of bundle, children bundles, and host worksheets.',
+                default=1,
+                help='depth of ancesters to print out, <=0 prints only the spec, 1 prints out spec and its direct parents',
             ),
             Commands.Argument(
                 '-w',
@@ -2070,27 +2064,29 @@ class BundleCLI(object):
         ),
     )
     def do_ancesters_command(self, args):
-        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-
-        bundles_uuid = client.fetch_parents_info(
-            'bundles',
-            params={
-                'specs': args.bundle_spec,
-                'worksheet': worksheet_uuid,
-                'include': ['owner']
-                + (['children', 'group_permissions', 'host_worksheets'] if args.verbose else []),
-            },
+        bundle_specs = spec_util.expand_specs(args.bundle_spec)
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(
+            args.worksheet_spec
         )
+        def print_parent(bundle_spec,depth, prefix):
+            if depth < 0:
+                return
+            bundle = client.fetch_one(
+                'bundles',
+                params={
+                    'specs': bundle_spec,
+                    'worksheet': worksheet_uuid,
+                    'include': ['owner']
+                },
+            )
+            print prefix, bundle['metadata']['name'] + "(" + bundle['uuid'][:8] + ")"
+            if not bundle['dependencies']:
+                return
+            for dep in bundle['dependencies']:
+                print_parent(dep['parent_uuid'], depth - 1, " " + prefix)
+        for bundle_id in bundle_specs:
+            print_parent(bundle_id, args.depth, "-")
 
-        level = len(bundles_uuid)
-        prefix=""
-        while (level >= 0):
-            for i, info in enumerate(bundles_uuid[level])
-                print >>self.stdout, prefix
-                if i > 0:
-                    print
-                self.print_basic_info(client, info, False)
     @staticmethod
     def key_value_str(key, value):
         return '%-26s: %s' % (
